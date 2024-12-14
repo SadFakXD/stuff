@@ -1,100 +1,81 @@
-import vosk
-import pyttsx3
-import pyaudio
-import os
-import json
-from datetime import datetime
-import random
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Голосовой Ассистент</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1b3a;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
 
-# Инициализация синтеза речи
-engine = pyttsx3.init()
-engine.setProperty("voice", "ru")  # Русский голос
+        #start {
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            border: none;
+            background-color: #6c4fbb;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
 
-def speak(text):
-    """Произнести текст"""
-    engine.say(text)
-    engine.runAndWait()
+        #start:hover {
+            background-color: #5a3e99;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
 
-# Путь к модели Vosk
-MODEL_PATH = r"C:\Users\Abdula\Documents\vosk-model-small-ru-0.22"
+    <h1>Голосовой Ассистент</h1>
+    <button id="start">Запустить</button>
+    
+    <script>
+        // Функция для синтеза речи
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            utterance.voice = voices.find(voice => voice.lang === 'ru-RU') || voices[0];
+            window.speechSynthesis.speak(utterance);
+        }
 
-# Проверяем, есть ли модель
-if not os.path.exists(MODEL_PATH):
-    print("Модель не найдена! Скачайте её с сайта Vosk и поместите в текущую директорию.")
-    exit(1)
+        // Функция для распознавания речи
+        function startRecognition() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'ru-RU'; // Устанавливаем язык на русский
+            recognition.continuous = false;
+            recognition.interimResults = true;
 
-# Инициализация модели
-model = vosk.Model(MODEL_PATH)
-recognizer = vosk.KaldiRecognizer(model, 16000)
+            recognition.onstart = function() {
+                console.log("Голосовое распознавание начато...");
+            };
 
-# Настраиваем микрофон
-audio = pyaudio.PyAudio()
-stream = audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8000)
-stream.start_stream()
+            recognition.onerror = function(event) {
+                console.error("Ошибка распознавания:", event.error);
+            };
 
-# Функция обработки команд
-def handle_command(command):
-    """Обработать команды пользователя"""
-    command = command.lower()
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                console.log("Распознанный текст: ", transcript);
+                speak("Вы сказали: " + transcript); // Отправляем обратно ответ
+            };
 
-    # Приветствие
-    if "привет" in command:
-        responses = ["Привет!", "Здравствуйте!", "Как настроение?"]
-        speak(random.choice(responses))
+            recognition.start(); // Запуск распознавания
+        }
 
-    # Время
-    elif "время" in command:
-        now = datetime.now()
-        speak(f"Сейчас {now.hour} часов {now.minute} минут.")
-
-    # Выключение компьютера
-    elif "выключи компьютер" in command:
-        speak("Выключаю компьютер. До свидания!")
-        os.system("shutdown /s /t 1")
-
-    # Умный ответ
-    elif "как тебя зовут" in command:
-        speak("Меня зовут ассистент. А вас?")
-
-    elif "как дела" in command:
-        responses = ["У меня всё отлично, спасибо! А у вас?", "Работаю, как всегда!", "Хорошо, что вы спросили!"]
-        speak(random.choice(responses))
-
-    elif "расскажи анекдот" in command:
-        jokes = [
-            "Почему программисты не ходят в лес? Потому что боятся заблудиться в деревьях.",
-            "Девушка на свидании: 'И что ты можешь мне предложить?' Парень: 'Программу для оптимизации наших отношений.'",
-            "Если долго сидеть за компьютером, можно стать виндоузером."
-        ]
-        speak(random.choice(jokes))
-
-    # Завершение работы
-    elif "стоп" in command or "выход" in command:
-        speak("До свидания! Было приятно поговорить.")
-        return False
-
-    # Команда не распознана
-    else:
-        speak("Извините, я не понял вашу команду.")
-
-    return True
-
-# Основной цикл
-print("Ассистент слушает... (нажмите Ctrl+C для выхода)")
-try:
-    while True:
-        data = stream.read(4000, exception_on_overflow=False)
-
-        if recognizer.AcceptWaveform(data):
-            result = json.loads(recognizer.Result())
-            command = result.get("text", "").lower()
-            print(f"Вы сказали: {command}")
-
-            if not handle_command(command):
-                break
-except KeyboardInterrupt:
-    print("Выход из программы...")
-finally:
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
+        // Обработчик для кнопки старта
+        document.getElementById('start').addEventListener('click', function() {
+            speak('Здравствуйте! Я готов вас слушать.');
+            startRecognition(); // Запуск распознавания
+        });
+    </script>
+</body>
+</html>
